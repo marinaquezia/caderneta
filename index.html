@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Caderneta de Gastos</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Caderneta">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EEF2EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101714" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: uma coluna estreita de app de bolso — saldo grande no topo, registro rápido, lista do ciclo. */
+:root{
+  --bg:#EEF2EF; --surface:#FFFFFF; --fg:#16211C; --muted:#5D6B64; --line:#D5DDD8;
+  --accent:#2E6A55; --accent-ink:#FFFFFF; --soft:#DCEBE3; --warn:#B4441B; --warn-soft:#F6E1D6;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101714; --surface:#18221D; --fg:#E7EEEA; --muted:#93A39B; --line:#2A3832;
+  --accent:#6CC2A0; --accent-ink:#0E1A15; --soft:#1F3229; --warn:#F08A5D; --warn-soft:#3A2219; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101714; --surface:#18221D; --fg:#E7EEEA; --muted:#93A39B; --line:#2A3832;
+  --accent:#6CC2A0; --accent-ink:#0E1A15; --soft:#1F3229; --warn:#F08A5D; --warn-soft:#3A2219; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;padding:20px 16px calc(40px + env(safe-area-inset-bottom,0px));-webkit-text-size-adjust:100%}
+.wrap{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.topo{display:flex;flex-direction:column;gap:2px}
+h1{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+.sync{font-size:12px;color:var(--muted);margin:0;min-height:1em}
+.num{font-variant-numeric:tabular-nums}
+.saldo{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.saldo .lbl{color:var(--muted);font-size:13px}
+.saldo .big{font-family:var(--display);font-weight:700;font-size:44px;line-height:1;letter-spacing:-.02em}
+.saldo.over .big{color:var(--warn)}
+.bar{height:10px;border-radius:99px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.saldo.over .bar i{background:var(--warn)}
+.ritmo{display:flex;gap:8px;flex-wrap:wrap}
+.pill{background:var(--soft);border-radius:99px;padding:4px 10px;font-size:13px}
+.saldo.over .pill.alert{background:var(--warn-soft);color:var(--warn)}
+form{display:flex;flex-direction:column;gap:10px}
+.valor{display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:6px 14px}
+.valor:focus-within{border-color:var(--accent)}
+.valor span{font-family:var(--display);font-size:22px;color:var(--muted)}
+.valor input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font-family:var(--display);font-size:30px;font-weight:700;padding:6px 0;outline:none}
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.cats button{border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:99px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+.cats button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.nota{border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px}
+.add{border:0;background:var(--accent);color:var(--accent-ink);border-radius:14px;padding:14px;font:inherit;font-weight:600;font-size:16px;cursor:pointer}
+.add:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{font-size:13px;color:var(--muted);min-height:1em;margin:0}
+.porcat{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.porcat b{color:var(--fg);font-weight:600}
+h2{font-family:var(--display);font-size:17px;font-weight:700;margin:0}
+ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+li{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+li .d{min-width:0;flex:1}
+li .c{font-weight:600}
+li .s{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+li .v{font-weight:600}
+li.pendente .v{opacity:.6}
+li .x{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;padding:6px}
+li .x.sure{color:var(--warn);font-weight:600}
+.vazio{color:var(--muted);font-size:14px;padding:14px 0}
+details,.setup{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.setup{display:flex;flex-direction:column;gap:10px}
+.setup p{margin:0;color:var(--muted);font-size:14px}
+summary{cursor:pointer;font-weight:600}
+.cfg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.cfg label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.cfg input{border:1.5px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;padding:8px;font:inherit;font-size:16px;min-width:0}
+.cfg .full{grid-column:1/-1}
+.cfg button,.sair{grid-column:1/-1;border:1.5px solid var(--accent);background:transparent;color:var(--accent);border-radius:10px;padding:10px;font:inherit;font-weight:600;cursor:pointer}
+.sair{border-color:var(--line);color:var(--muted);margin-top:10px;width:100%}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topo">
+    <h1 id="ciclo">Ciclo —</h1>
+    <p class="sync" id="sync" aria-live="polite"></p>
+  </div>
+
+  <section class="setup" id="setup" hidden>
+    <h2>Primeiro acesso</h2>
+    <p>Cole a chave secreta que apareceu no registro do Apps Script.</p>
+    <form id="chaveForm">
+      <input class="nota" id="chaveInput" placeholder="Chave secreta" aria-label="Chave secreta" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="add" type="submit">Conectar</button>
+      <p class="msg" id="chaveMsg"></p>
+    </form>
+  </section>
+
+  <section class="saldo" id="saldo" aria-live="polite">
+    <div class="lbl" id="lblRestam">Ainda dá para gastar</div>
+    <div class="big num" id="restam">R$ —</div>
+    <div class="bar" aria-hidden="true"><i id="barra" style="width:0%"></i></div>
+    <div class="lbl num" id="gastoDe">—</div>
+    <div class="ritmo">
+      <span class="pill num" id="porSemana">—</span>
+      <span class="pill num" id="porDia">—</span>
+    </div>
+  </section>
+
+  <form id="form" autocomplete="off">
+    <div class="valor"><span>R$</span><input id="valor" inputmode="decimal" placeholder="0,00" aria-label="Valor do gasto"></div>
+    <div class="cats" id="cats" role="group" aria-label="Categoria"></div>
+    <input class="nota" id="nota" placeholder="Onde? (opcional)" aria-label="Observação">
+    <button class="add" id="add" type="submit">Anotar gasto</button>
+    <p class="msg" id="msg" aria-live="polite"></p>
+  </form>
+
+  <div class="porcat num" id="porcat"></div>
+
+  <section>
+    <h2>Gastos deste ciclo</h2>
+    <ul id="lista"><li class="vazio">Carregando…</li></ul>
+  </section>
+
+  <details>
+    <summary>Ajustar ciclo e meta</summary>
+    <form class="cfg" id="cfgForm">
+      <label>Início<input type="date" id="cfgIni"></label>
+      <label>Fim<input type="date" id="cfgFim"></label>
+      <label class="full">Meta do ciclo (R$)<input id="cfgMeta" inputmode="decimal"></label>
+      <button type="submit">Salvar ciclo</button>
+    </form>
+    <button type="button" class="sair" id="trocarChave">Trocar chave secreta</button>
+  </details>
+</div>
+
+<script>
+// Endereço do App da Web do Apps Script (Implantar → Gerenciar implantações → URL).
+const API = "https://script.google.com/macros/s/AKfycbzjSRhRtHy_dVByP0fI5rWGyXpiC-DBG4H73XYS_CrK86mwy6YwU3QWgxejLRPR16A2DQ/exec";
+
+const CATS_PADRAO = ["Comer fora","Uber","Ônibus","Mercado","Farmácia","Outros"];
+const PADRAO = {inicio:"2026-10-12", fim:"2026-11-11", meta:525};
+const LS = {chave:"cad.chave", cache:"cad.cache", fila:"cad.fila"};
+const brl = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const $ = id => document.getElementById(id);
+
+const ler = (k, padrao) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : padrao; } catch (_) { return padrao; } };
+const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+const novoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+// Estado: o que a planilha devolveu por último (guardado no aparelho) + a fila
+// de ações ainda não enviadas. A tela mostra os dois combinados.
+let chave = ler(LS.chave, "");
+let servidor = ler(LS.cache, {ciclo: PADRAO, categorias: CATS_PADRAO, gastos: []});
+let fila = ler(LS.fila, []);
+let cfg = servidor.ciclo, gastos = [], cat = null;
+let pendingDelete = null;
+let sincronizando = false;
+
+function visao(){
+  let gs = servidor.gastos.slice(), c = servidor.ciclo;
+  for (const op of fila) {
+    if (op.acao === "adicionar" && !gs.some(g => g.id === op.id)) gs.push({id: op.id, ts: op.ts, valor: op.valor, cat: op.cat, nota: op.nota, pendente: true});
+    if (op.acao === "apagar") gs = gs.filter(g => g.id !== op.id);
+    if (op.acao === "ciclo") c = {inicio: op.inicio, fim: op.fim, meta: op.meta};
+  }
+  cfg = c; gastos = gs;
+}
+
+// categorias (vêm da aba "Categorias" da planilha)
+function montarCats(){
+  const lista = servidor.categorias && servidor.categorias.length ? servidor.categorias : CATS_PADRAO;
+  if (!lista.includes(cat)) cat = lista[0];
+  const catsEl = $("cats");
+  catsEl.replaceChildren(...lista.map(c => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = c;
+    b.setAttribute("aria-pressed", c === cat);
+    b.onclick = () => { cat = c; [...catsEl.children].forEach(x => x.setAttribute("aria-pressed", x.textContent === cat)); };
+    return b;
+  }));
+}
+
+function parseValor(s){
+  s = String(s||"").trim().replace(/\s|R\$/g,"");
+  if (s.includes(",")) s = s.replace(/\./g,"").replace(",",".");
+  const n = Number(s);
+  return isFinite(n) && n > 0 ? Math.round(n*100)/100 : null;
+}
+function dia(iso){ const [y,m,d] = iso.split("-").map(Number); return new Date(y, m-1, d); }
+function fmtData(iso){ const d = dia(iso); return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}); }
+
+function render(){
+  visao();
+  const ini = dia(cfg.inicio), fimExcl = new Date(dia(cfg.fim).getTime() + 864e5);
+  const doCiclo = gastos.filter(g => g.ts >= ini.getTime() && g.ts < fimExcl.getTime()).sort((a,b) => b.ts - a.ts);
+  const total = doCiclo.reduce((s,g) => s + g.valor, 0);
+  const restam = cfg.meta - total;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const inicioConta = hoje < ini ? ini : hoje;
+  const diasRest = Math.max(1, Math.round((fimExcl - inicioConta) / 864e5));
+
+  $("ciclo").textContent = `Ciclo ${fmtData(cfg.inicio)} a ${fmtData(cfg.fim)}`;
+  const box = $("saldo");
+  box.classList.toggle("over", restam < 0);
+  $("lblRestam").textContent = restam < 0 ? "Passou da meta em" : "Ainda dá para gastar";
+  $("restam").textContent = brl(Math.abs(restam));
+  $("barra").style.width = Math.min(100, cfg.meta > 0 ? total / cfg.meta * 100 : 100) + "%";
+  $("gastoDe").textContent = `Gastei ${brl(total)} de ${brl(cfg.meta)}`;
+  if (restam >= 0) {
+    $("porSemana").textContent = `${brl(restam / diasRest * 7)} por semana`;
+    $("porDia").textContent = `${brl(restam / diasRest)} por dia · ${diasRest} ${diasRest === 1 ? "dia" : "dias"}`;
+    $("porSemana").classList.remove("alert");
+  } else {
+    $("porSemana").textContent = "Segure até o fim do ciclo";
+    $("porSemana").classList.add("alert");
+    $("porDia").textContent = `${diasRest} ${diasRest === 1 ? "dia" : "dias"} restantes`;
+  }
+
+  const porCat = {};
+  doCiclo.forEach(g => porCat[g.cat] = (porCat[g.cat]||0) + g.valor);
+  $("porcat").replaceChildren(...Object.entries(porCat).sort((a,b) => b[1]-a[1]).map(([c,v]) => {
+    const s = document.createElement("span"); s.append(c + " "); const b = document.createElement("b"); b.textContent = brl(v); s.append(b); return s;
+  }));
+
+  const ul = $("lista");
+  if (!doCiclo.length) { ul.innerHTML = '<li class="vazio">Nenhum gasto neste ciclo ainda. Anote o primeiro acima.</li>'; return; }
+  ul.replaceChildren(...doCiclo.map(g => {
+    const li = document.createElement("li");
+    if (g.pendente) li.className = "pendente";
+    const d = document.createElement("div"); d.className = "d";
+    const c = document.createElement("div"); c.className = "c"; c.textContent = g.cat;
+    const s = document.createElement("div"); s.className = "s";
+    s.textContent = new Date(g.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) + (g.nota ? " · " + g.nota : "") + (g.pendente ? " · enviando…" : "");
+    d.append(c, s);
+    const v = document.createElement("div"); v.className = "v num"; v.textContent = brl(g.valor);
+    const x = document.createElement("button"); x.type = "button"; x.className = "x";
+    const sure = pendingDelete === g.id;
+    x.textContent = sure ? "Apagar?" : "×"; if (sure) x.classList.add("sure");
+    x.setAttribute("aria-label", sure ? "Confirmar apagar" : "Apagar gasto");
+    x.onclick = () => {
+      if (pendingDelete !== g.id) { pendingDelete = g.id; render(); setTimeout(() => { if (pendingDelete === g.id) { pendingDelete = null; render(); } }, 4000); return; }
+      pendingDelete = null;
+      enfileirar({acao: "apagar", id: g.id});
+    };
+    li.append(d, v, x);
+    return li;
+  }));
+}
+
+function fillCfg(){
+  if ($("cfgForm").contains(document.activeElement)) return; // não atropela o que você está digitando
+  $("cfgIni").value = cfg.inicio; $("cfgFim").value = cfg.fim; $("cfgMeta").value = String(cfg.meta).replace(".",",");
+}
+
+// ───── conversa com o Apps Script ─────
+
+async function chamar(corpo){
+  // Corpo em texto puro: evita a checagem extra de CORS que o Apps Script não responde.
+  const r = await fetch(API, {method: "POST", body: JSON.stringify({...corpo, chave})});
+  const j = await r.json();
+  if (!j.ok) throw Object.assign(new Error(j.erro), {doServidor: true, codigo: j.erro});
+  return j;
+}
+
+function receber(j){
+  servidor = {ciclo: j.ciclo, categorias: j.categorias, gastos: j.gastos};
+  gravar(LS.cache, servidor);
+  montarCats(); render(); fillCfg();
+}
+
+function statusFila(extra){
+  const n = fila.length;
+  $("sync").textContent = n ? `${n} ${n === 1 ? "item aguardando" : "itens aguardando"} envio${extra ? " · " + extra : ""}` : (extra || "");
+}
+
+async function sincronizar(){
+  if (sincronizando || !chave || API.startsWith("COLE_")) return;
+  sincronizando = true;
+  let falhou = false;
+  try {
+    let resp = null;
+    while (fila.length) {
+      try {
+        resp = await chamar(fila[0]);
+      } catch (e) {
+        if (!e.doServidor || e.codigo === "chave") throw e;
+        $("msg").textContent = "A planilha recusou um item: " + e.message; // descarta e segue
+      }
+      fila.shift(); gravar(LS.fila, fila);
+      if (resp) receber(resp);
+    }
+    if (!resp) receber(await chamar({acao: "dados"}));
+    statusFila("");
+  } catch (e) {
+    falhou = true;
+    if (e.codigo === "chave") pedirChave("Chave incorreta. Confira e cole de novo.");
+    else statusFila(navigator.onLine === false ? "sem internet" : "não consegui falar com a planilha");
+  } finally {
+    sincronizando = false;
+  }
+  if (!falhou && fila.length) sincronizar();
+}
+
+function enfileirar(op){
+  fila.push(op); gravar(LS.fila, fila);
+  render(); statusFila("");
+  sincronizar();
+}
+
+function pedirChave(aviso){
+  $("setup").hidden = false;
+  $("chaveMsg").textContent = aviso || "";
+}
+
+// ───── formulários ─────
+
+$("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = parseValor($("valor").value);
+  if (!v) { $("msg").textContent = "Digite um valor, por exemplo 32,50."; $("valor").focus(); return; }
+  enfileirar({acao: "adicionar", id: novoId(), valor: v, cat, nota: $("nota").value.trim().slice(0,80), ts: Date.now()});
+  $("valor").value = ""; $("nota").value = "";
+  $("msg").textContent = `Anotado: ${brl(v)} em ${cat}.`;
+});
+
+$("cfgForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const meta = parseValor($("cfgMeta").value);
+  const ini = $("cfgIni").value, fim = $("cfgFim").value;
+  if (!meta || !ini || !fim || fim < ini) { $("msg").textContent = "Confira as datas e a meta do ciclo."; return; }
+  document.activeElement.blur();
+  enfileirar({acao: "ciclo", inicio: ini, fim, meta});
+  $("msg").textContent = "Ciclo salvo.";
+});
+
+$("chaveForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const tentativa = $("chaveInput").value.trim();
+  if (!tentativa) return;
+  $("chaveMsg").textContent = "Conectando…";
+  const anterior = chave;
+  chave = tentativa;
+  try {
+    receber(await chamar({acao: "dados"}));
+    gravar(LS.chave, chave);
+    $("setup").hidden = true; $("chaveInput").value = "";
+    sincronizar();
+  } catch (err) {
+    chave = anterior;
+    $("chaveMsg").textContent = err.codigo === "chave" ? "Essa chave não confere." : "Não consegui falar com a planilha. Confira a internet.";
+  }
+});
+
+$("trocarChave").addEventListener("click", () => { pedirChave(""); $("chaveInput").focus(); });
+
+// ───── início ─────
+
+montarCats(); render(); fillCfg(); statusFila("");
+if (API.startsWith("COLE_")) $("sync").textContent = "Falta colocar o endereço do Apps Script no código.";
+else if (!chave) pedirChave("");
+else sincronizar();
+
+addEventListener("online", sincronizar);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sincronizar(); });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
